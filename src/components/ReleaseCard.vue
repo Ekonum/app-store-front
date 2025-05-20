@@ -203,19 +203,6 @@ async function showDetails() {
   color: var(--ekonum-dark-gray, #333);
 }
 
-.release-card {
-  /* background-color: #eef; */ /* Couleur de fond plus neutre */
-}
-.status-deployed, .status-superseded {
-  border-left: 5px solid var(--success-color, green);
-}
-.status-failed {
-  border-left: 5px solid var(--error-color, red);
-}
-
-.status-pending-install, .status-pending-upgrade, .status-pending-rollback, .status-uninstalled, .status-uninstalling {
-  border-left: 5px solid orange;
-}
 .status {
   font-weight: bold;
 }
