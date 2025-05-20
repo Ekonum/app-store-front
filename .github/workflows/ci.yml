@@ -1,0 +1,140 @@
+name: App Store Frontend CI
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+      - develop
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+jobs:
+  lint-test-build:
+    name: Lint, Test & Build App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Match your project's Node.js version
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm # Path to npm cache
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test --if-present # Assuming you have a test script (e.g., Vitest)
+
+      - name: Build application
+        run: npm run build
+        env:
+          # VITE_K3S_NODE_IP is needed at build time by Vite
+          # For CI, this IP might be a placeholder or a specific dev/staging IP if known
+          # Best practice: For generic images, this should not be environment-specific.
+          # For this user's specific K3s VM, they can provide it as a secret.
+          VITE_K3S_NODE_IP: ${{ secrets.VITE_K3S_NODE_IP_FOR_CI_BUILD || '192.168.64.8' }} # Fallback for example
+          VITE_PROD_API_BASE_PATH: /api # Ensure this is set for prod build
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-folder
+          path: dist/
+
+  release-and-build-docker:
+    name: Release & Build Docker Image
+    needs: lint-test-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release and plugins
+        run: npm ci --ignore-scripts
+
+      - name: Run semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NPM_TOKEN: ${{ secrets.NPM_TOKEN }} # Only if publishing to npmjs.com
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-folder
+          path: dist/ # Download to dist/ directory
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/app-store-front
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: . # Root of frontend project
+          file: ./Dockerfile # Path to frontend's Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # VITE_K3S_NODE_IP is baked in during 'npm run build' which happens in lint-test-build job.
+          # The 'dist' folder is then used here. If you need to pass it as a build-arg to Docker:
+          # build-args: |
+          #  VITE_K3S_NODE_IP_ARG=${{ secrets.VITE_K3S_NODE_IP_FOR_CI_BUILD || '192.168.64.8' }}
+          # And in your frontend Dockerfile, use this ARG before `npm run build`:
+          # ARG VITE_K3S_NODE_IP_ARG
+          # ENV VITE_K3S_NODE_IP=$VITE_K3S_NODE_IP_ARG
+          # RUN npm run build
