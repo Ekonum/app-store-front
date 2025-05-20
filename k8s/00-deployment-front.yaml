@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-store-front-deployment
+  namespace: app-store-api # Deploying frontend in the same namespace as API
+  labels:
+    app: app-store-front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-store-front
+  template:
+    metadata:
+      labels:
+        app: app-store-front
+    spec:
+      containers:
+        - name: app-store-front
+          image: app-store-front:latest # Image built from app-store-front Dockerfile
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80 # Nginx listens on port 80
+          # env:
+          # VITE_K3S_NODE_IP is a build-time variable for Vite.
+          # If it needs to be dynamic at runtime for constructing NodePort URLs,
+          # this would require the app to fetch this info or have it injected differently.
+          # For now, it's baked in at build time from your .env file.
+          # A more robust K8s way would be for the app to construct URLs
+          # based on Ingress hostnames if an Ingress is used.
+          livenessProbe:
+            httpGet:
+              path: / # Root path of the frontend
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Consider resource requests and limits
+          # resources:
+          #   requests:
+          #     cpu: "50m"
+          #     memory: "64Mi"
+          #   limits:
+          #     cpu: "200m"
+          #     memory: "128Mi"

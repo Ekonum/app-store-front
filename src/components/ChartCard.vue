@@ -4,7 +4,7 @@
     <p><small>Chart: {{ chart.chart }} (v{{ chart.version }})</small></p>
     <p>{{ chart.description }}</p>
     <button :disabled="isInstalling" @click="installChart">
-      {{ isInstalling ? 'Installation...' : 'Installer' }}
+      {{ isInstalling ? 'Installing...' : 'Install' }}
     </button>
     <p v-if="installMessage"
        :class="{ 'error-message': installError, 'success-message': !installError && installMessage }">{{
@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-// ... (script setup existant) ...
+// ... (existing script setup) ...
 import {ref} from 'vue';
 import axios from 'axios';
 
@@ -28,7 +28,7 @@ const isInstalling = ref(false);
 const installMessage = ref('');
 const installError = ref(false);
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_PATH;
 
 async function installChart() {
   isInstalling.value = true;
@@ -42,11 +42,11 @@ async function installChart() {
     const response = await axios.post(`${apiBaseUrl}/charts/${props.chart.name}/install`, {
       values: values
     });
-    installMessage.value = response.data.message || `Release ${response.data.release.name} en cours d'installation. Statut: ${response.data.release.status}`;
+    installMessage.value = response.data.message || `Release ${response.data.release.name} is being installed. Status: ${response.data.release.status}`;
     emit('chartInstalled');
   } catch (error) {
-    console.error("Erreur d'installation:", error);
-    installMessage.value = error.response?.data?.error || error.message || "Erreur lors de l'installation.";
+    console.error("Installation error:", error);
+    installMessage.value = error.response?.data?.error || error.message || "Error during installation.";
     installError.value = true;
   } finally {
     isInstalling.value = false;
@@ -61,23 +61,23 @@ async function installChart() {
 .card {
   border: 1px solid var(--border-color, #e0e0e0);
   padding: 16px;
-  margin: 0; /* Sera géré par le gap du container parent */
+  margin: 0; /* Will be handled by the parent container's gap */
   border-radius: 8px;
   background-color: var(--light-bg, #f9f9f9);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  width: calc(33.333% - 11px); /* Pour 3 cartes par ligne avec gap de 16px */
+  width: calc(33.333% - 11px); /* For 3 cards per row with 16px gap */
   box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
   .card {
-    width: calc(50% - 8px); /* 2 cartes par ligne */
+    width: calc(50% - 8px); /* 2 cards per row */
   }
 }
 
 @media (max-width: 600px) {
   .card {
-    width: 100%; /* 1 carte par ligne */
+    width: 100%; /* 1 card per row */
   }
 }
 
@@ -111,6 +111,6 @@ button:disabled {
   cursor: not-allowed;
 }
 button:hover:not(:disabled) {
-  background-color: #2A6F9E; /* Un bleu un peu plus foncé pour le hover */
+  background-color: #2A6F9E; /* Slightly darker blue for hover */
 }
 </style>

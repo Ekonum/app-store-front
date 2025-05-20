@@ -6,8 +6,8 @@
     </header>
     <main>
       <div class="section">
-        <h2>Applications Disponibles</h2>
-        <div v-if="chartsLoading">Chargement des charts...</div>
+        <h2>Available Applications</h2>
+        <div v-if="chartsLoading">Loading charts...</div>
         <div v-if="chartsError" class="error-message">{{ chartsError }}</div>
         <div v-if="availableCharts.length" class="card-container">
           <ChartCard
@@ -17,15 +17,15 @@
               @chartInstalled="fetchInstalledReleases"
           />
         </div>
-        <div v-else-if="!chartsLoading && !chartsError">Aucun chart disponible.</div>
+        <div v-else-if="!chartsLoading && !chartsError">No charts available.</div>
       </div>
 
       <div class="section">
-        <h2>Applications Installées</h2>
+        <h2>Installed Applications</h2>
         <button :disabled="releasesLoading" class="refresh-button" @click="fetchInstalledReleases">
-          {{ releasesLoading ? 'Rafraîchissement...' : 'Rafraîchir la liste' }}
+          {{ releasesLoading ? 'Refreshing...' : 'Refresh List' }}
         </button>
-        <div v-if="releasesLoading">Chargement des releases...</div>
+        <div v-if="releasesLoading">Loading releases...</div>
         <div v-if="releasesError" class="error-message">{{ releasesError }}</div>
         <div v-if="installedReleases.length" class="card-container">
           <ReleaseCard
@@ -35,7 +35,7 @@
               @releaseUninstalled="fetchInstalledReleases"
           />
         </div>
-        <div v-else-if="!releasesLoading && !releasesError">Aucune application installée.</div>
+        <div v-else-if="!releasesLoading && !releasesError">No applications installed.</div>
       </div>
     </main>
   </div>
@@ -54,7 +54,7 @@ const chartsError = ref('');
 const releasesLoading = ref(false);
 const releasesError = ref('');
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_PATH;
 
 async function fetchAvailableCharts() {
   chartsLoading.value = true;
@@ -63,8 +63,8 @@ async function fetchAvailableCharts() {
     const response = await axios.get(`${apiBaseUrl}/charts`);
     availableCharts.value = response.data;
   } catch (error) {
-    console.error("Erreur de récupération des charts:", error);
-    chartsError.value = error.response?.data?.error || error.message || "Impossible de charger les charts disponibles.";
+    console.error("Error retrieving charts:", error);
+    chartsError.value = error.response?.data?.error || error.message || "Unable to load available charts.";
   } finally {
     chartsLoading.value = false;
   }
@@ -80,12 +80,12 @@ async function fetchInstalledReleases() {
     } else {
       installedReleases.value = [];
       if (response.data !== null && response.data !== undefined) {
-        console.warn("Données reçues pour les releases non-conformes (attendu un tableau):", response.data);
+        console.warn("Received non-compliant data for releases (array expected):", response.data);
       }
     }
   } catch (error) {
-    console.error("Erreur de récupération des releases:", error);
-    releasesError.value = error.response?.data?.error || error.message || "Impossible de charger les releases installées.";
+    console.error("Error retrieving releases:", error);
+    releasesError.value = error.response?.data?.error || error.message || "Unable to load installed releases.";
     installedReleases.value = [];
   } finally {
     releasesLoading.value = false;
@@ -120,22 +120,22 @@ onMounted(() => {
   max-width: 1200px;
 }
 header {
-  display: flex; /* Pour aligner logo et titre */
-  align-items: center; /* Alignement vertical */
-  justify-content: center; /* Centrer horizontalement */
+  display: flex; /* To align logo and title */
+  align-items: center; /* Vertical alignment */
+  justify-content: center; /* Center horizontally */
   margin-bottom: 30px;
   padding-bottom: 15px;
   border-bottom: 2px solid var(--ekonum-blue);
 }
 
 .logo {
-  height: 50px; /* Ajustez selon la taille de votre logo */
+  height: 50px; /* Adjust based on your logo size */
   margin-right: 20px;
 }
 
 header h1 {
   color: var(--ekonum-dark-gray);
-  margin: 0; /* Retirer marges par défaut du h1 */
+  margin: 0; /* Remove default margins from h1 */
 }
 .section {
   margin-bottom: 40px;

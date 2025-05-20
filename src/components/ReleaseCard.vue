@@ -3,34 +3,34 @@
     <h3>{{ release.name }}</h3>
     <p><small>Chart: {{ release.chart }} (App v{{ release.app_version }}) - Release v{{ release.version }}</small></p>
     <p>Namespace: {{ release.namespace }}</p>
-    <p>Statut: <span class="status">{{ release.status }}</span> (Mis à jour:
+    <p>Status: <span class="status">{{ release.status }}</span> (Updated:
       {{ new Date(release.updated).toLocaleString() }})</p>
 
     <div v-if="accessUrl" class="access-link">
-      <a :href="accessUrl" class="button-like" target="_blank">Ouvrir l'application</a>
+      <a :href="accessUrl" class="button-like" target="_blank">Open Application</a>
     </div>
     <p v-else-if="Object.keys(release.node_ports || {}).length > 0" class="info-message">
-      Accès via NodePort(s):
+      Access via NodePort(s):
       <span v-for="(nodePort, portName) in release.node_ports" :key="portName" class="node-port-item">
         {{ portName }} -> <a :href="`http://${k3sNodeIp}:${nodePort}`" target="_blank">{{ nodePort }}</a>
       </span>
     </p>
     <p v-else-if="release.status.toLowerCase() === 'deployed'" class="info-message">
-      Aucun NodePort exposé trouvé pour cette application.
+      No exposed NodePort found for this application.
     </p>
 
     <div class="actions">
       <button :disabled="isLoadingDetails" class="details-button" @click="showDetails">
-        {{ isLoadingDetails ? 'Chargement...' : (details ? 'Cacher Détails' : 'Afficher Détails') }}
+        {{ isLoadingDetails ? 'Loading...' : (details ? 'Hide Details' : 'Show Details') }}
       </button>
       <button :disabled="isUninstalling" class="uninstall-button" @click="uninstallRelease">
-        {{ isUninstalling ? 'Désinstallation...' : 'Désinstaller' }}
+        {{ isUninstalling ? 'Uninstalling...' : 'Uninstall' }}
       </button>
     </div>
     <p v-if="actionMessage" :class="{ 'error-message': actionError, 'success-message': !actionError && actionMessage }">
       {{ actionMessage }}</p>
     <div v-if="details" class="details-panel">
-      <h4>Détails de la Release:</h4>
+      <h4>Release Details:</h4>
       <pre>{{ JSON.stringify(details, null, 2) }}</pre>
     </div>
   </div>
@@ -52,7 +52,7 @@ const actionMessage = ref('');
 const actionError = ref(false);
 const details = ref(null);
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_PATH;
 const k3sNodeIp = import.meta.env.VITE_K3S_NODE_IP; // Récupérer l'IP du noeud K3s
 
 // Logique pour déterminer l'URL d'accès principale
