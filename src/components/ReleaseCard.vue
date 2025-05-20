@@ -5,6 +5,20 @@
     <p>Namespace: {{ release.namespace }}</p>
     <p>Statut: <span class="status">{{ release.status }}</span> (Mis à jour:
       {{ new Date(release.updated).toLocaleString() }})</p>
+
+    <div v-if="accessUrl" class="access-link">
+      <a :href="accessUrl" class="button-like" target="_blank">Ouvrir l'application</a>
+    </div>
+    <p v-else-if="Object.keys(release.node_ports || {}).length > 0" class="info-message">
+      Accès via NodePort(s):
+      <span v-for="(nodePort, portName) in release.node_ports" :key="portName" class="node-port-item">
+        {{ portName }} -> <a :href="`http://${k3sNodeIp}:${nodePort}`" target="_blank">{{ nodePort }}</a>
+      </span>
+    </p>
+    <p v-else-if="release.status.toLowerCase() === 'deployed'" class="info-message">
+      Aucun NodePort exposé trouvé pour cette application.
+    </p>
+
     <div class="actions">
       <button :disabled="isLoadingDetails" class="details-button" @click="showDetails">
         {{ isLoadingDetails ? 'Chargement...' : (details ? 'Cacher Détails' : 'Afficher Détails') }}
@@ -23,7 +37,7 @@
 </template>
 
 <script setup>
-import {ref} from 'vue';
+import {computed, ref} from 'vue'; // Ajout de computed
 import axios from 'axios';
 
 const props = defineProps({
@@ -39,6 +53,29 @@ const actionError = ref(false);
 const details = ref(null);
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const k3sNodeIp = import.meta.env.VITE_K3S_NODE_IP; // Récupérer l'IP du noeud K3s
+
+// Logique pour déterminer l'URL d'accès principale
+const accessUrl = computed(() => {
+  if (!props.release.node_ports || Object.keys(props.release.node_ports).length === 0 || !k3sNodeIp) {
+    return null;
+  }
+  // Prioriser les noms de port communs
+  const preferredPorts = ['http', 'web', 'https', '80', '8080', '443'];
+  for (const preferredPortName of preferredPorts) {
+    if (props.release.node_ports[preferredPortName]) {
+      const protocol = (preferredPortName === 'https' || preferredPortName === '443') ? 'https' : 'http';
+      return `${protocol}://${k3sNodeIp}:${props.release.node_ports[preferredPortName]}`;
+    }
+  }
+  // Sinon, prendre le premier NodePort disponible
+  const firstPortName = Object.keys(props.release.node_ports)[0];
+  if (firstPortName) {
+    const protocol = (firstPortName === 'https' || firstPortName === '443') ? 'https' : 'http';
+    return `${protocol}://${k3sNodeIp}:${props.release.node_ports[firstPortName]}`;
+  }
+  return null;
+});
 
 async function uninstallRelease() {
   if (!confirm(`Êtes-vous sûr de vouloir désinstaller ${props.release.name} ?`)) {
@@ -47,13 +84,12 @@ async function uninstallRelease() {
   isUninstalling.value = true;
   actionMessage.value = '';
   actionError.value = false;
-  details.value = null; // Cacher les détails pendant la désinstallation
+  details.value = null;
   try {
     const response = await axios.delete(`${apiBaseUrl}/releases/${props.release.name}`);
     actionMessage.value = response.data.message || "Désinstallation réussie.";
-    // Pas besoin d'émettre ici si on va rafraîchir globalement après un délai
     setTimeout(() => {
-      emit('releaseUninstalled'); // Émettre après un petit délai pour laisser le message s'afficher
+      emit('releaseUninstalled');
       actionMessage.value = '';
     }, 2000);
 
@@ -68,6 +104,7 @@ async function uninstallRelease() {
     isUninstalling.value = false;
   }
 }
+
 
 async function showDetails() {
   if (details.value) {
@@ -103,6 +140,50 @@ async function showDetails() {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   width: calc(33.333% - 11px); /* Pour 3 cartes par ligne avec gap de 16px */
   box-sizing: border-box;
+  position: relative;
+}
+
+.access-link {
+  margin-bottom: 10px;
+}
+
+.button-like {
+  display: inline-block;
+  padding: 8px 12px;
+  background-color: var(--success-color, #4CAF50);
+  color: var(--button-text-color, white);
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+
+.button-like:hover {
+  background-color: #388E3C; /* Vert plus foncé */
+}
+
+.info-message {
+  font-size: 0.9em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.node-port-item {
+  margin-right: 10px;
+  display: inline-block;
+  padding: 2px 5px;
+  background-color: #e9e9e9;
+  border-radius: 3px;
+}
+
+.node-port-item a {
+  color: var(--ekonum-blue);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.node-port-item a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 900px) {
